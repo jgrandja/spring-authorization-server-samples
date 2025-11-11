@@ -1,0 +1,17 @@
+pluginManagement {
+	repositories {
+		gradlePluginPortal()
+		mavenCentral()
+		maven { url "https://repo.spring.io/milestone" }
+		maven { url "https://repo.spring.io/snapshot" }
+	}
+}
+
+rootProject.name = 'spring-authorization-server-samples'
+
+include 'default-authorizationserver'
+include 'demo-authorizationserver'
+include 'demo-client'
+include 'messages-resource'
+include 'users-resource'
+include 'x509-certificate-generator'
