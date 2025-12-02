@@ -34,6 +34,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
@@ -122,6 +123,12 @@ public class AuthorizationServerConfig {
 					new LoginUrlAuthenticationEntryPoint("/login"),
 					new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
 				)
+				.defaultDeniedHandlerForMissingAuthority(
+					new LoginUrlAuthenticationEntryPoint("/login"),
+					FactorGrantedAuthority.OTT_AUTHORITY)
+				.defaultDeniedHandlerForMissingAuthority(
+					new LoginUrlAuthenticationEntryPoint("/login"),
+					FactorGrantedAuthority.PASSWORD_AUTHORITY)
 			);
 		// @formatter:on
 		return http.build();
