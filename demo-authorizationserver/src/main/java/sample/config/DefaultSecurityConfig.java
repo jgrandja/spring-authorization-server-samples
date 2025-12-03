@@ -15,37 +15,28 @@
  */
 package sample.config;
 
-import java.util.function.Supplier;
-
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authorization.AllRequiredFactorsAuthorizationManager;
-import org.springframework.security.authorization.AuthorizationManager;
-import org.springframework.security.authorization.AuthorizationManagerFactory;
-import org.springframework.security.authorization.AuthorizationResult;
-import org.springframework.security.authorization.DefaultAuthorizationManagerFactory;
-import org.springframework.security.authorization.RequiredFactor;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authorization.EnableMultiFactorAuthentication;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientAuthenticationToken;
-import org.springframework.security.oauth2.server.resource.authentication.AbstractOAuth2TokenAuthenticationToken;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.ott.OneTimeTokenGenerationSuccessHandler;
 import org.springframework.security.web.authentication.ott.RedirectOneTimeTokenGenerationSuccessHandler;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
+
+import static org.springframework.security.authorization.AuthenticatedAuthorizationManager.authenticated;
 
 /**
  * @author Joe Grandja
@@ -53,7 +44,10 @@ import org.springframework.security.web.session.HttpSessionEventPublisher;
  * @since 1.1
  */
 @EnableWebSecurity
-@EnableMultiFactorAuthentication(authorities = {})
+@EnableMultiFactorAuthentication(authorities = {
+	FactorGrantedAuthority.OTT_AUTHORITY,
+	FactorGrantedAuthority.PASSWORD_AUTHORITY
+})
 @Configuration(proxyBeanMethods = false)
 public class DefaultSecurityConfig {
 
@@ -63,10 +57,10 @@ public class DefaultSecurityConfig {
 	@Bean
 	public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
 		http
-			.authorizeHttpRequests(authorize ->
-				authorize
-					.requestMatchers("/assets/**", "/login").permitAll()
-					.anyRequest().authenticated()
+			.authorizeHttpRequests(authorize -> authorize
+				.requestMatchers("/assets/**", "/login").permitAll()
+				// Uses MFA from @EnableMultiFactorAuthentication
+				.anyRequest().authenticated()
 			)
 			.formLogin(Customizer.withDefaults())
 			.oneTimeTokenLogin(Customizer.withDefaults());
@@ -82,34 +76,6 @@ public class DefaultSecurityConfig {
 			LOGGER.info("Generated one-time token for request {}: {}", request.getRequestURI(), oneTimeToken.getTokenValue());
 			delegate.handle(request, response, oneTimeToken);
 		};
-	}
-
-	@Bean
-	public AuthorizationManagerFactory<Object> authorizationManagerFactory() {
-		DefaultAuthorizationManagerFactory<Object> result = new DefaultAuthorizationManagerFactory<>();
-		result.setAdditionalAuthorization(new MfaAuthorizationManager());
-		return result;
-	}
-
-	private static final class MfaAuthorizationManager implements AuthorizationManager<Object> {
-
-		private final AuthorizationManager<Object> requiredFactorsAuthorizationManager =
-				AllRequiredFactorsAuthorizationManager.builder()
-						.requireFactor(RequiredFactor.builder().passwordAuthority().build())
-						.requireFactor(RequiredFactor.builder().ottAuthority().build())
-						.build();
-
-		@Override
-		public @Nullable AuthorizationResult authorize(Supplier<? extends @Nullable Authentication> authenticationSupplier, Object object) {
-			Authentication authentication = authenticationSupplier.get();
-			if (authentication instanceof OAuth2ClientAuthenticationToken ||
-					authentication instanceof AbstractOAuth2TokenAuthenticationToken) {
-				// MFA is not required for OAuth2 Client Authentication OR OAuth2 Bearer Authentication
-				return null;
-			}
-			return this.requiredFactorsAuthorizationManager.authorize(authenticationSupplier, object);
-		}
-
 	}
 
 	// @formatter:off

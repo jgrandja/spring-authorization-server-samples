@@ -55,6 +55,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 
+import static org.springframework.security.authorization.AuthenticatedAuthorizationManager.authenticated;
+
 /**
  * @author Joe Grandja
  * @author Daniel Garnier-Moiroux
@@ -113,8 +115,10 @@ public class AuthorizationServerConfig {
 						authorizationEndpoint.consentPage(CUSTOM_CONSENT_PAGE_URI))
 					.oidc(Customizer.withDefaults());	// Enable OpenID Connect 1.0
 			})
-			.authorizeHttpRequests((authorize) ->
-				authorize.anyRequest().authenticated()
+			.authorizeHttpRequests((authorize) -> authorize
+				// These OAuth2 Endpoints do not require MFA
+				.requestMatchers("/userinfo", "/oauth2/token", "/oauth2/device_authorization").access(authenticated())
+				.anyRequest().authenticated()
 			)
 			// Redirect to the /login page when not authenticated from the authorization endpoint
 			// NOTE: DefaultSecurityConfig is configured with formLogin.loginPage("/login")
